@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sierra Query Generator</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f4f4f9;
+        color: #333;
+    }
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    button {
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+    pre {
+        background: #eee;
+        padding: 15px;
+        border-radius: 4px;
+        overflow-x: auto;
+        margin-top: 20px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .status {
+        margin-top: 15px;
+        font-weight: bold;
+        color: #0056b3;
+    }
+    .error {
+        color: #d9534f;
+    }
+    .item-card {
+        background: #fdfdfd;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+    .item-card h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 18px;
+    }
+    .item-card p {
+        margin: 5px 0;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Sierra Query Generator</h1>
+    <div class="form-group">
+        <label for="locationCode">Location Code:</label>
+        <input type="text" id="locationCode" placeholder="e.g., main, a">
+    </div>
+    <div class="form-group">
+        <label for="targetDate">Target Date:</label>
+        <input type="text" id="targetDate" placeholder="MM-DD-YYYY or YYYY-MM-DD">
+    </div>
+    <button onclick="handleGenerate()">Generate Query</button>
+
+    <div id="status" class="status"></div>
+
+    <h2>Generated Query:</h2>
+    <pre id="output">{}</pre>
+
+    <h2>Item Data:</h2>
+    <div id="itemData"><em>No data fetched yet.</em></div>
+</div>
+
+<script>
+    /**
+     * Generates a working Sierra III item query JSON payload based on
+     * user-provided location and date parameters.
+     *
+     * @param {string} locationCode - The location code string (e.g., 'main', 'a')
+     * @param {string} targetDate - Date string formatted as 'MM-DD-YYYY' or 'YYYY-MM-DD'
+     * @returns {Object} Dict payload ready for the Sierra API request
+     */
+    function generateSierraQuery(locationCode, targetDate) {
+        // Optional safety check to normalize date format to MM-DD-YYYY if passed as YYYY-MM-DD
+        try {
+            if (targetDate.includes("-") && targetDate.split("-")[0].length === 4) {
+                const parts = targetDate.split("-");
+                if (parts.length === 3) {
+                    const year = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10);
+                    const day = parseInt(parts[2], 10);
+
+                    const d = new Date(year, month - 1, day);
+                    if (d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day) {
+                        // Pad month and day with leading zero if necessary
+                        const formattedMonth = parts[1].padStart(2, '0');
+                        const formattedDay = parts[2].padStart(2, '0');
+                        targetDate = `${formattedMonth}-${formattedDay}-${parts[0]}`;
+                    }
+                }
+            }
+        } catch (e) {
+            // Fall back to using the string exactly as provided if parsing fails
+        }
+
+        // Build payload using your working structural syntax
+        const payload = {
+            "queries": [
+                {
+                    "target": {
+                        "record": { "type": "item" },
+                        "id": 73302
+                    },
+                    "expr": [
+                        {
+                            "op": "greater_than_or_equal",
+                            "operands": [ targetDate ]
+                        }
+                    ]
+                },
+                "and",
+                {
+                    "target": {
+                        "record": { "type": "item" },
+                        "id": 79
+                    },
+                    "expr": [
+                        {
+                            "op": "starts_with",
+                            "operands": [ locationCode ]
+                        }
+                    ]
+                },
+                "and",
+                {
+                    "target": {
+                        "record": { "type": "item" },
+                        "id": 88
+                    },
+                    "expr": [
+                        {
+                            "op": "equals",
+                            "operands": [ "(" ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        return payload;
+    }
+
+    async function fetchItems(payload) {
+        const statusDiv = document.getElementById("status");
+        const itemDataDiv = document.getElementById("itemData");
+
+        statusDiv.textContent = "Authenticating...";
+        statusDiv.className = "status";
+        itemDataDiv.innerHTML = "";
+
+        try {
+            statusDiv.textContent = "Querying items via proxy...";
+            const response = await fetch("/.netlify/functions/sierra-proxy", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to fetch items");
+            }
+
+            const itemsData = await response.json();
+
+            if (!itemsData.entries || itemsData.entries.length === 0) {
+                statusDiv.textContent = "Query successful, but no items found.";
+                return;
+            }
+
+            // Render Items
+            statusDiv.textContent = `Success! Fetched ${itemsData.entries.length} items.`;
+
+            itemsData.entries.forEach(item => {
+                const card = document.createElement("div");
+                card.className = "item-card";
+                card.innerHTML = `
+                    <h3>Item ID: ${item.id}</h3>
+                    <p><strong>Barcode:</strong> ${item.barcode || 'N/A'}</p>
+                    <p><strong>Call Number:</strong> ${item.callNumber || 'N/A'}</p>
+                    <p><strong>Status:</strong> ${item.status?.display || 'N/A'}</p>
+                    <p><strong>Location:</strong> ${item.location?.name || item.location?.code || 'N/A'}</p>
+                `;
+                itemDataDiv.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error(error);
+            statusDiv.textContent = `Error: ${error.message}`;
+            statusDiv.className = "status error";
+        }
+    }
+
+    function handleGenerate() {
+        const locationCode = document.getElementById("locationCode").value;
+        const targetDate = document.getElementById("targetDate").value;
+
+        if (!locationCode || !targetDate) {
+            document.getElementById("status").textContent = "Please enter both Location Code and Target Date.";
+            document.getElementById("status").className = "status error";
+            return;
+        }
+
+        const payload = generateSierraQuery(locationCode, targetDate);
+
+        document.getElementById("output").textContent = JSON.stringify(payload, null, 2);
+
+        fetchItems(payload);
+    }
+</script>
+
+</body>
+</html>
