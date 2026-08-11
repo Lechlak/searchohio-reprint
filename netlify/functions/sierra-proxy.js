@@ -5,7 +5,7 @@ exports.handler = async function(event, context) {
 
   try {
     const payload = JSON.parse(event.body);
-
+    
     // 1. Get Token
     const tokenResponse = await fetch("https://catalog.toledolibrary.org/iii/sierra-api/v6/token", {
         method: "POST",
@@ -18,7 +18,7 @@ exports.handler = async function(event, context) {
     if (!tokenResponse.ok) {
         throw new Error("Failed to authenticate with Sierra API");
     }
-
+    
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
@@ -37,7 +37,7 @@ exports.handler = async function(event, context) {
     }
 
     const queryData = await queryResponse.json();
-
+    
     if (!queryData.entries || queryData.entries.length === 0) {
         return {
             statusCode: 200,

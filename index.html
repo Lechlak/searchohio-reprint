@@ -111,7 +111,7 @@
     /**
      * Generates a working Sierra III item query JSON payload based on
      * user-provided location and date parameters.
-     *
+     * 
      * @param {string} locationCode - The location code string (e.g., 'main', 'a')
      * @param {string} targetDate - Date string formatted as 'MM-DD-YYYY' or 'YYYY-MM-DD'
      * @returns {Object} Dict payload ready for the Sierra API request
@@ -125,7 +125,7 @@
                     const year = parseInt(parts[0], 10);
                     const month = parseInt(parts[1], 10);
                     const day = parseInt(parts[2], 10);
-
+                    
                     const d = new Date(year, month - 1, day);
                     if (d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day) {
                         // Pad month and day with leading zero if necessary
@@ -182,14 +182,14 @@
                 }
             ]
         };
-
+        
         return payload;
     }
 
     async function fetchItems(payload) {
         const statusDiv = document.getElementById("status");
         const itemDataDiv = document.getElementById("itemData");
-
+        
         statusDiv.textContent = "Authenticating...";
         statusDiv.className = "status";
         itemDataDiv.innerHTML = "";
@@ -210,7 +210,7 @@
             }
 
             const itemsData = await response.json();
-
+            
             if (!itemsData.entries || itemsData.entries.length === 0) {
                 statusDiv.textContent = "Query successful, but no items found.";
                 return;
@@ -218,7 +218,7 @@
 
             // Render Items
             statusDiv.textContent = `Success! Fetched ${itemsData.entries.length} items.`;
-
+            
             itemsData.entries.forEach(item => {
                 const card = document.createElement("div");
                 card.className = "item-card";
@@ -242,7 +242,7 @@
     function handleGenerate() {
         const locationCode = document.getElementById("locationCode").value;
         const targetDate = document.getElementById("targetDate").value;
-
+        
         if (!locationCode || !targetDate) {
             document.getElementById("status").textContent = "Please enter both Location Code and Target Date.";
             document.getElementById("status").className = "status error";
@@ -250,9 +250,9 @@
         }
 
         const payload = generateSierraQuery(locationCode, targetDate);
-
+        
         document.getElementById("output").textContent = JSON.stringify(payload, null, 2);
-
+        
         fetchItems(payload);
     }
 </script>
