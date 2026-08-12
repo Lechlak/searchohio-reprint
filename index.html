@@ -223,11 +223,16 @@
                 const card = document.createElement("div");
                 card.className = "item-card";
                 card.innerHTML = `
-                    <h3>Item ID: ${item.id}</h3>
+                    <h3>${item.title || 'Unknown Title'}</h3>
+                    <p><strong>Author:</strong> ${item.author || 'N/A'}</p>
+                    <p><strong>Record Number:</strong> ${item.recordNumber || 'N/A'}</p>
+                    <p><strong>Date:</strong> ${item.dateRequested}</p>
+                    <p><strong>Item ID:</strong> ${item.id}</p>
                     <p><strong>Barcode:</strong> ${item.barcode || 'N/A'}</p>
                     <p><strong>Call Number:</strong> ${item.callNumber || 'N/A'}</p>
                     <p><strong>Status:</strong> ${item.status?.display || 'N/A'}</p>
-                    <p><strong>Location:</strong> ${item.location?.name || item.location?.code || 'N/A'}</p>
+                    <p><strong>Pickup Location:</strong> ${item.location?.name || 'N/A'}</p>
+                    <p><strong>Pickup Code:</strong> ${item.location?.code || 'N/A'}</p>
                 `;
                 itemDataDiv.appendChild(card);
             });
