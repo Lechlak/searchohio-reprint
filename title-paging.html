@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Title Paging Reports Generator</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f4f4f9;
+        color: #333;
+    }
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    .nav-links {
+        margin-bottom: 20px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input[type="text"], input[type="date"] {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    button {
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+    pre {
+        background: #eee;
+        padding: 15px;
+        border-radius: 4px;
+        overflow-x: auto;
+        margin-top: 20px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .status {
+        margin-top: 15px;
+        font-weight: bold;
+        color: #0056b3;
+    }
+    .error {
+        color: #d9534f;
+    }
+    .item-card {
+        background: #fdfdfd;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+    .item-card h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 18px;
+    }
+    .item-card p {
+        margin: 5px 0;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="nav-links">
+        <a href="index.html">Back to Item Query Generator</a>
+    </div>
+    <h1>Title Paging Reports</h1>
+    
+    <div class="form-group">
+        <label for="createdDate">Created Date (optional, e.g. YYYY-MM-DD):</label>
+        <input type="date" id="createdDate">
+    </div>
+    <button onclick="handleFetchReports()">Fetch Reports</button>
+
+    <div id="status" class="status"></div>
+
+    <h2>Reports Data:</h2>
+    <div id="itemData"><em>No data fetched yet.</em></div>
+</div>
+
+<script>
+    async function fetchReports(createdDate) {
+        const statusDiv = document.getElementById("status");
+        const itemDataDiv = document.getElementById("itemData");
+        
+        statusDiv.textContent = "Authenticating...";
+        statusDiv.className = "status";
+        itemDataDiv.innerHTML = "";
+
+        try {
+            // 1. Get Token
+            const tokenResponse = await fetch("https://catalog.toledolibrary.org/iii/sierra-api/v6/token", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Basic N1IyTGJPOUpGREI0ZGlJcFNiMEdWakJ4NDVjdDpMU1FCQTVQd0FnUDd0d3hUUmZra2tKRmJNbUpuOTQ=",
+                    "Accept": "application/json"
+                }
+            });
+
+            if (!tokenResponse.ok) throw new Error("Failed to authenticate with Sierra API");
+            
+            const tokenData = await tokenResponse.json();
+            const accessToken = tokenData.access_token;
+
+            // 2. Fetch Reports
+            let url = "https://catalog.toledolibrary.org/iii/sierra-api/v6/titlepaging/reports/";
+            if (createdDate) {
+                // If createdDate is provided, let's append it.
+                // Depending on API, you might need to format it or use a range.
+                url += `?createdDate=${encodeURIComponent(createdDate)}`;
+            }
+
+            statusDiv.textContent = "Fetching reports...";
+            const reportsResponse = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "Accept": "application/json"
+                }
+            });
+
+            if (!reportsResponse.ok) {
+                const errorData = await reportsResponse.json().catch(() => null);
+                throw new Error(`Failed to fetch reports: ${reportsResponse.status} ${errorData ? JSON.stringify(errorData) : ''}`);
+            }
+
+            const reportsData = await reportsResponse.json();
+            
+            if (!reportsData.entries || reportsData.entries.length === 0) {
+                statusDiv.textContent = "Success! No reports found.";
+                return;
+            }
+
+            // Render Reports
+            statusDiv.textContent = `Success! Fetched ${reportsData.entries.length} reports. Click a report to fetch its titles.`;
+            
+            reportsData.entries.forEach(report => {
+                const card = document.createElement("div");
+                card.className = "item-card";
+                card.innerHTML = `
+                    <h3>Report ID: ${report.id}</h3>
+                    <p><strong>Created Date:</strong> ${report.createdDate || 'N/A'}</p>
+                    <p><strong>Total Titles:</strong> ${report.total !== undefined ? report.total : 'N/A'}</p>
+                    <button onclick="fetchTitlesForReport('${report.id}', '${accessToken}')" style="margin-top: 10px; font-size: 14px; padding: 5px 10px;">Fetch Titles</button>
+                    <div id="titles-${report.id}" style="margin-top: 15px;"></div>
+                `;
+                itemDataDiv.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error(error);
+            statusDiv.textContent = `Error: ${error.message}`;
+            statusDiv.className = "status error";
+        }
+    }
+
+    async function fetchTitlesForReport(reportId, accessToken) {
+        const titlesDiv = document.getElementById(`titles-${reportId}`);
+        titlesDiv.innerHTML = "<em>Fetching titles...</em>";
+
+        try {
+            const titlesResponse = await fetch(`https://catalog.toledolibrary.org/iii/sierra-api/v6/titlepaging/reports/${reportId}?offset=0&limit=50`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "Accept": "application/json"
+                }
+            });
+
+            if (!titlesResponse.ok) {
+                throw new Error(`Failed to fetch titles: ${titlesResponse.status}`);
+            }
+
+            const titlesData = await titlesResponse.json();
+
+            if (!titlesData.entries || titlesData.entries.length === 0) {
+                titlesDiv.innerHTML = "<p>No titles found for this report.</p>";
+                return;
+            }
+
+            let html = `<h4>Titles (${titlesData.entries.length} fetched):</h4><ul>`;
+            titlesData.entries.forEach(entry => {
+                const titleId = entry.id ? entry.id.recordId : 'N/A';
+                const pickup = entry.pickup || 'N/A';
+                html += `<li><strong>Title Record ID:</strong> ${titleId} | <strong>Pickup:</strong> ${pickup}</li>`;
+            });
+            html += "</ul>";
+            titlesDiv.innerHTML = html;
+
+        } catch (error) {
+            console.error(error);
+            titlesDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+        }
+    }
+
+    function handleFetchReports() {
+        const createdDate = document.getElementById("createdDate").value;
+        fetchReports(createdDate);
+    }
+</script>
+
+</body>
+</html>
