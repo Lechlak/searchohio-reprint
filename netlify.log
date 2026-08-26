@@ -1,0 +1,63 @@
+⬥ Injecting environment variable values for all scopes
+⬥ Ignored general context env var: LANG (defined in process)
+⬥ No app server detected. Using simple static server
+⬥ Unable to determine public folder to serve files from. Using current working directory
+⬥ Setup a netlify.toml file with a [dev] section to specify your dev server settings.
+⬥ See docs at: https://docs.netlify.com/cli/local-development/#project-detection
+⬥ Running static server from "app"
+⬥ Setting up local dev server
+
+⬥ Static server listening to 3999
+
+   ╭─────────────────────── ⬥  ────────────────────────╮
+   │                                                   │
+   │   Local dev server ready: http://localhost:8888   │
+   │                                                   │
+   ╰───────────────────────────────────────────────────╯
+
+⬥ Loaded function sierra-proxy
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+(node:585032) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+(node:585032) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Response with status 200 in 118 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/titlePagingReports
+Request from ::1: GET /.netlify/functions/sierra-proxy/titlePagingReports
+Response with status 404 in 76 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+Response with status 200 in 80 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/titlepaging/reports/
+Request from ::1: GET /.netlify/functions/sierra-proxy/titlepaging/reports/
+Response with status 403 in 96 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+Response with status 200 in 144 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+Response with status 200 in 75 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/titlePagingReports
+Request from ::1: GET /.netlify/functions/sierra-proxy/titlePagingReports
+Response with status 404 in 76 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+Response with status 200 in 78 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/titlepaging/reports/
+Request from ::1: GET /.netlify/functions/sierra-proxy/titlepaging/reports/
+Response with status 403 in 74 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+Response with status 200 in 78 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/titlepaging/reports/
+Request from ::1: GET /.netlify/functions/sierra-proxy/titlepaging/reports/
+Response with status 403 in 73 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+Response with status 200 in 74 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/token
+Request from ::1: POST /.netlify/functions/sierra-proxy/token
+Response with status 200 in 90 ms.
+⬥ Rewrote URL to /.netlify/functions/sierra-proxy/titlepaging/reports
+Request from ::1: GET /.netlify/functions/sierra-proxy/titlepaging/reports
+Response with status 403 in 90 ms.

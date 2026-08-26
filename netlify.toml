@@ -3,5 +3,8 @@
   to = "/.netlify/functions/sierra-proxy/:splat"
   status = 200
 
+[build]
+  functions = "netlify/functions"
+
 [functions]
   node_bundler = "esbuild"
