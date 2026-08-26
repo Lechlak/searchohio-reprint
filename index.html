@@ -195,26 +195,53 @@
         itemDataDiv.innerHTML = "";
 
         try {
-            statusDiv.textContent = "Querying items via proxy...";
-            const response = await fetch("/.netlify/functions/sierra-proxy", {
+            // 1. Get Token
+            const tokenResponse = await fetch("/api/token", {
                 method: "POST",
                 headers: {
+                    "Accept": "application/json"
+                }
+            });
+
+            if (!tokenResponse.ok) throw new Error("Failed to authenticate with Sierra API");
+            
+            const tokenData = await tokenResponse.json();
+            const accessToken = tokenData.access_token;
+
+            // 2. Query Items
+            statusDiv.textContent = "Querying items...";
+            const queryResponse = await fetch("/api/items/query?offset=0&limit=50", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to fetch items");
-            }
+            if (!queryResponse.ok) throw new Error("Failed to execute item query");
 
-            const itemsData = await response.json();
+            const queryData = await queryResponse.json();
             
-            if (!itemsData.entries || itemsData.entries.length === 0) {
+            if (!queryData.entries || queryData.entries.length === 0) {
                 statusDiv.textContent = "Query successful, but no items found.";
                 return;
             }
+
+            // Extract item IDs
+            const itemIds = queryData.entries.map(entry => entry.link.split("/items/")[1]).join(",");
+
+            // 3. Fetch Item Details
+            statusDiv.textContent = `Fetching details for ${queryData.entries.length} items...`;
+            const itemsResponse = await fetch(`/api/items?id=${itemIds}&fields=id,barcode,callNumber,status,location`, {
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`
+                }
+            });
+
+            if (!itemsResponse.ok) throw new Error("Failed to fetch item details");
+
+            const itemsData = await itemsResponse.json();
 
             // Render Items
             statusDiv.textContent = `Success! Fetched ${itemsData.entries.length} items.`;
@@ -223,16 +250,11 @@
                 const card = document.createElement("div");
                 card.className = "item-card";
                 card.innerHTML = `
-                    <h3>${item.title || 'Unknown Title'}</h3>
-                    <p><strong>Author:</strong> ${item.author || 'N/A'}</p>
-                    <p><strong>Record Number:</strong> ${item.recordNumber || 'N/A'}</p>
-                    <p><strong>Date:</strong> ${item.dateRequested}</p>
-                    <p><strong>Item ID:</strong> ${item.id}</p>
+                    <h3>Item ID: ${item.id}</h3>
                     <p><strong>Barcode:</strong> ${item.barcode || 'N/A'}</p>
                     <p><strong>Call Number:</strong> ${item.callNumber || 'N/A'}</p>
                     <p><strong>Status:</strong> ${item.status?.display || 'N/A'}</p>
-                    <p><strong>Pickup Location:</strong> ${item.location?.name || 'N/A'}</p>
-                    <p><strong>Pickup Code:</strong> ${item.location?.code || 'N/A'}</p>
+                    <p><strong>Location:</strong> ${item.location?.name || item.location?.code || 'N/A'}</p>
                 `;
                 itemDataDiv.appendChild(card);
             });

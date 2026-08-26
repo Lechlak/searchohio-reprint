@@ -118,10 +118,9 @@
 
         try {
             // 1. Get Token
-            const tokenResponse = await fetch("https://catalog.toledolibrary.org/iii/sierra-api/v6/token", {
+            const tokenResponse = await fetch("/api/token", {
                 method: "POST",
                 headers: {
-                    "Authorization": "Basic N1IyTGJPOUpGREI0ZGlJcFNiMEdWakJ4NDVjdDpMU1FCQTVQd0FnUDd0d3hUUmZra2tKRmJNbUpuOTQ=",
                     "Accept": "application/json"
                 }
             });
@@ -132,7 +131,7 @@
             const accessToken = tokenData.access_token;
 
             // 2. Fetch Reports
-            let url = "https://catalog.toledolibrary.org/iii/sierra-api/v6/titlepaging/reports/";
+            let url = "/api/titlepaging/reports/";
             if (createdDate) {
                 // If createdDate is provided, let's append it.
                 // Depending on API, you might need to format it or use a range.
@@ -188,7 +187,7 @@
         titlesDiv.innerHTML = "<em>Fetching titles...</em>";
 
         try {
-            const titlesResponse = await fetch(`https://catalog.toledolibrary.org/iii/sierra-api/v6/titlepaging/reports/${reportId}?offset=0&limit=50`, {
+            const titlesResponse = await fetch(`/api/titlepaging/reports/${reportId}?offset=0&limit=50`, {
                 method: "GET",
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
@@ -211,7 +210,7 @@
             titlesData.entries.forEach(entry => {
                 const titleId = entry.id ? entry.id.recordId : 'N/A';
                 const pickup = entry.pickup || 'N/A';
-                html += `<li><strong>Title Record ID:</strong> ${titleId} | <strong>Pickup:</strong> ${pickup}</li>`;
+                html += `<li><strong>Title Record ID:</strong> ${titleId} | <strong>Send to (Pickup Location):</strong> ${pickup}</li>`;
             });
             html += "</ul>";
             titlesDiv.innerHTML = html;
