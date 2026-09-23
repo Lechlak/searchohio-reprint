@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Item Withdrawals Report</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f4f4f9;
+        color: #333;
+    }
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    .nav-links {
+        margin-bottom: 20px;
+    }
+    .nav-links a {
+        margin-right: 15px;
+        color: #007bff;
+        text-decoration: none;
+    }
+    .nav-links a:hover {
+        text-decoration: underline;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input[type="date"], input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .date-row {
+        display: flex;
+        gap: 15px;
+    }
+    .date-row .form-group {
+        flex: 1;
+    }
+    button {
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+    .status {
+        margin-top: 15px;
+        font-weight: bold;
+        color: #0056b3;
+    }
+    .error {
+        color: #d9534f;
+    }
+    .summary-card {
+        background: #fdfdfd;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="nav-links">
+        <a href="index.html">Item Query Generator</a> |
+        <a href="title-paging.html">Title Paging Reports</a> |
+        <a href="item-withdrawals.html">Item Withdrawals</a>
+    </div>
+    <h1>Item Withdrawals Report</h1>
+
+    <div class="date-row">
+        <div class="form-group">
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate">
+        </div>
+        <div class="form-group">
+            <label for="endDate">End Date:</label>
+            <input type="date" id="endDate">
+        </div>
+    </div>
+    <button onclick="handleFetchWithdrawals()">Fetch Withdrawals</button>
+
+    <div id="status" class="status"></div>
+
+    <div id="results"></div>
+</div>
+
+<script>
+    function getItemTypeCode(item) {
+        if (item.fixedFields && item.fixedFields['98']) {
+            const field98 = item.fixedFields['98'];
+            if (typeof field98 === 'object' && field98 !== null) {
+                return field98.value !== undefined ? String(field98.value) : (field98.label || 'Unknown');
+            }
+            return String(field98);
+        }
+        if (item.itemType !== undefined) {
+            return String(item.itemType);
+        }
+        return 'Unknown';
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'Unknown Date';
+        return dateStr.split('T')[0];
+    }
+
+    async function fetchWithdrawals(startDate, endDate) {
+        const statusDiv = document.getElementById("status");
+        const resultsDiv = document.getElementById("results");
+
+        statusDiv.textContent = "Authenticating...";
+        statusDiv.className = "status";
+        resultsDiv.innerHTML = "";
+
+        try {
+            // 1. Get Token
+            const tokenResponse = await fetch("/api/token", {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: "grant_type=client_credentials"
+            });
+
+            if (!tokenResponse.ok) {
+                const errText = await tokenResponse.text().catch(() => "");
+                throw new Error(`Failed to authenticate with Sierra API: ${tokenResponse.status} ${errText}`);
+            }
+
+            const tokenData = await tokenResponse.json();
+            const accessToken = tokenData.access_token;
+
+            // 2. Fetch Deleted Items with Pagination
+            const limit = 100;
+            let offset = 0;
+            let total = null;
+            let allEntries = [];
+
+            const dateRangeParam = `[${startDate},${endDate}]`;
+
+            while (total === null || offset < total) {
+                statusDiv.textContent = `Fetching deleted items (retrieved ${allEntries.length}${total !== null ? ' of ' + total : ''})...`;
+
+                const url = `/api/items?updatedDate=${encodeURIComponent(dateRangeParam)}&deleted=true&fields=fixedFields,updatedDate&limit=${limit}&offset=${offset}`;
+
+                const itemsResponse = await fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`,
+                        "Accept": "application/json"
+                    }
+                });
+
+                if (!itemsResponse.ok) {
+                    const errorData = await itemsResponse.json().catch(() => null);
+                    throw new Error(`Failed to fetch deleted items: ${itemsResponse.status} ${errorData ? JSON.stringify(errorData) : ''}`);
+                }
+
+                const data = await itemsResponse.json();
+
+                if (data.total !== undefined) {
+                    total = data.total;
+                }
+
+                if (data.entries && data.entries.length > 0) {
+                    allEntries = allEntries.concat(data.entries);
+                    offset += data.entries.length;
+                } else {
+                    break;
+                }
+
+                // Safety fallback if API doesn't return total field
+                if (total === null && data.entries.length < limit) {
+                    break;
+                }
+            }
+
+            if (allEntries.length === 0) {
+                statusDiv.textContent = `No withdrawn items found for date range [${startDate} to ${endDate}].`;
+                return;
+            }
+
+            statusDiv.textContent = `Success! Processed ${allEntries.length} withdrawn item records.`;
+
+            // 3. Aggregate Data
+            const countByItemType = {};
+            const countByDate = {};
+            const countByDateAndType = {};
+
+            allEntries.forEach(item => {
+                const dateKey = formatDate(item.updatedDate);
+                const itemType = getItemTypeCode(item);
+
+                // Count by Item Type
+                countByItemType[itemType] = (countByItemType[itemType] || 0) + 1;
+
+                // Count by Date
+                countByDate[dateKey] = (countByDate[dateKey] || 0) + 1;
+
+                // Breakdown by Date and Item Type
+                if (!countByDateAndType[dateKey]) {
+                    countByDateAndType[dateKey] = {};
+                }
+                countByDateAndType[dateKey][itemType] = (countByDateAndType[dateKey][itemType] || 0) + 1;
+            });
+
+            // 4. Render Aggregation Results
+            let html = `
+                <div class="summary-card">
+                    <h2>Withdrawal Summary</h2>
+                    <p><strong>Date Range:</strong> ${startDate} to ${endDate}</p>
+                    <p><strong>Total Items Withdrawn:</strong> ${allEntries.length}</p>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Withdrawals by Item Type</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item Type (itype)</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            Object.keys(countByItemType).sort().forEach(type => {
+                html += `
+                    <tr>
+                        <td>${type}</td>
+                        <td>${countByItemType[type]}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Withdrawals by Date</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            Object.keys(countByDate).sort().forEach(date => {
+                html += `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${countByDate[date]}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Detailed Breakdown (Date x Item Type)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Item Type</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            Object.keys(countByDateAndType).sort().forEach(date => {
+                Object.keys(countByDateAndType[date]).sort().forEach(type => {
+                    html += `
+                        <tr>
+                            <td>${date}</td>
+                            <td>${type}</td>
+                            <td>${countByDateAndType[date][type]}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            resultsDiv.innerHTML = html;
+
+        } catch (error) {
+            console.error(error);
+            statusDiv.textContent = `Error: ${error.message}`;
+            statusDiv.className = "status error";
+        }
+    }
+
+    function handleFetchWithdrawals() {
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+
+        if (!startDate || !endDate) {
+            document.getElementById("status").textContent = "Please enter both Start Date and End Date.";
+            document.getElementById("status").className = "status error";
+            return;
+        }
+
+        if (startDate > endDate) {
+            document.getElementById("status").textContent = "Start Date must be before or equal to End Date.";
+            document.getElementById("status").className = "status error";
+            return;
+        }
+
+        fetchWithdrawals(startDate, endDate);
+    }
+</script>
+
+</body>
+</html>

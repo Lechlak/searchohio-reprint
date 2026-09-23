@@ -91,7 +91,9 @@
 
 <div class="container">
     <div class="nav-links">
-        <a href="index.html">Back to Item Query Generator</a>
+        <a href="index.html">Item Query Generator</a> |
+        <a href="title-paging.html">Title Paging Reports</a> |
+        <a href="item-withdrawals.html">Item Withdrawals</a>
     </div>
     <h1>Title Paging Reports</h1>
     
@@ -121,11 +123,16 @@
             const tokenResponse = await fetch("/api/token", {
                 method: "POST",
                 headers: {
-                    "Accept": "application/json"
-                }
+                    "Accept": "application/json",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: "grant_type=client_credentials"
             });
 
-            if (!tokenResponse.ok) throw new Error("Failed to authenticate with Sierra API");
+            if (!tokenResponse.ok) {
+                const errText = await tokenResponse.text().catch(() => "");
+                throw new Error(`Failed to authenticate with Sierra API: ${tokenResponse.status} ${errText}`);
+            }
             
             const tokenData = await tokenResponse.json();
             const accessToken = tokenData.access_token;
