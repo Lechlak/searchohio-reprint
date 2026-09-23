@@ -14,6 +14,8 @@ exports.handler = async function(event, context) {
     // Check if we are requesting the token endpoint. If so, inject the secret server-side.
     if (path === '/token' && event.httpMethod === 'POST') {
         const token = process.env.SIERRA_API_TOKEN || "Basic UTZYVmI0THdRSXdGOGppZ1JUUC9hbUlGYnBTTTpvcGl1ZXdxcmtsamhzYWR2bGtqc2Rmb2l1ZXdybjkzMjcrMjEz=";
+        delete headers['authorization'];
+        delete headers['Authorization'];
         headers['authorization'] = token;
     }
 
