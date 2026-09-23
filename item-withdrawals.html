@@ -96,6 +96,10 @@
     th {
         background-color: #f2f2f2;
     }
+    .table-container {
+        overflow-x: auto;
+        margin-top: 10px;
+    }
 </style>
 </head>
 <body>
@@ -126,16 +130,35 @@
 </div>
 
 <script>
-    function getItemTypeCode(item) {
+    function getItemTypeLabel(item) {
         if (item.fixedFields && item.fixedFields['98']) {
             const field98 = item.fixedFields['98'];
             if (typeof field98 === 'object' && field98 !== null) {
-                return field98.value !== undefined ? String(field98.value) : (field98.label || 'Unknown');
+                if (field98.label && field98.value !== undefined) {
+                    return `${field98.label} (${field98.value})`;
+                }
+                if (field98.label) return String(field98.label);
+                if (field98.value !== undefined) return String(field98.value);
             }
             return String(field98);
         }
         if (item.itemType !== undefined) {
             return String(item.itemType);
+        }
+        return 'Unknown';
+    }
+
+    function getLocationLabel(item) {
+        if (item.location) {
+            if (typeof item.location === 'object' && item.location !== null) {
+                if (item.location.name && item.location.code) {
+                    return `${item.location.name} (${item.location.code})`;
+                }
+                if (item.location.name) return String(item.location.name);
+                if (item.location.code) return String(item.location.code);
+            } else if (typeof item.location === 'string') {
+                return item.location;
+            }
         }
         return 'Unknown';
     }
@@ -183,7 +206,7 @@
             while (total === null || offset < total) {
                 statusDiv.textContent = `Fetching deleted items (retrieved ${allEntries.length}${total !== null ? ' of ' + total : ''})...`;
                 
-                const url = `/api/items?updatedDate=${encodeURIComponent(dateRangeParam)}&deleted=true&fields=fixedFields,updatedDate&limit=${limit}&offset=${offset}`;
+                const url = `/api/items?updatedDate=${encodeURIComponent(dateRangeParam)}&deleted=true&fields=id,location,fixedFields,updatedDate,barcode,callNumber,itemType,deleted&limit=${limit}&offset=${offset}`;
                 
                 const itemsResponse = await fetch(url, {
                     method: "GET",
@@ -226,15 +249,27 @@
 
             // 3. Aggregate Data
             const countByItemType = {};
+            const countByLocation = {};
+            const countByLocationAndType = {};
             const countByDate = {};
             const countByDateAndType = {};
 
             allEntries.forEach(item => {
                 const dateKey = formatDate(item.updatedDate);
-                const itemType = getItemTypeCode(item);
+                const itemType = getItemTypeLabel(item);
+                const location = getLocationLabel(item);
 
                 // Count by Item Type
                 countByItemType[itemType] = (countByItemType[itemType] || 0) + 1;
+
+                // Count by Location
+                countByLocation[location] = (countByLocation[location] || 0) + 1;
+
+                // Count by Location & Item Type
+                if (!countByLocationAndType[location]) {
+                    countByLocationAndType[location] = {};
+                }
+                countByLocationAndType[location][itemType] = (countByLocationAndType[location][itemType] || 0) + 1;
 
                 // Count by Date
                 countByDate[dateKey] = (countByDate[dateKey] || 0) + 1;
@@ -255,15 +290,44 @@
                 </div>
 
                 <div class="summary-card">
+                    <h3>Withdrawals by Location</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            Object.keys(countByLocation).sort().forEach(loc => {
+                html += `
+                    <tr>
+                        <td>${loc}</td>
+                        <td>${countByLocation[loc]}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="summary-card">
                     <h3>Withdrawals by Item Type</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Item Type (itype)</th>
-                                <th>Count</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item Type</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
             `;
 
             Object.keys(countByItemType).sort().forEach(type => {
@@ -276,20 +340,54 @@
             });
 
             html += `
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Withdrawals by Location & Item Type</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Item Type</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            Object.keys(countByLocationAndType).sort().forEach(loc => {
+                Object.keys(countByLocationAndType[loc]).sort().forEach(type => {
+                    html += `
+                        <tr>
+                            <td>${loc}</td>
+                            <td>${type}</td>
+                            <td>${countByLocationAndType[loc][type]}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="summary-card">
                     <h3>Withdrawals by Date</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Count</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
             `;
 
             Object.keys(countByDate).sort().forEach(date => {
@@ -302,21 +400,23 @@
             });
 
             html += `
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="summary-card">
                     <h3>Detailed Breakdown (Date x Item Type)</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Item Type</th>
-                                <th>Count</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Item Type</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
             `;
 
             Object.keys(countByDateAndType).sort().forEach(date => {
@@ -332,8 +432,52 @@
             });
 
             html += `
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Raw Item Data (${allEntries.length} items)</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item ID</th>
+                                    <th>Barcode</th>
+                                    <th>Call Number</th>
+                                    <th>Location</th>
+                                    <th>Item Type</th>
+                                    <th>Updated Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            allEntries.forEach(item => {
+                const itemId = item.id || 'N/A';
+                const barcode = item.barcode || 'N/A';
+                const callNumber = item.callNumber || 'N/A';
+                const locStr = getLocationLabel(item);
+                const typeStr = getItemTypeLabel(item);
+                const updated = item.updatedDate ? item.updatedDate : 'N/A';
+
+                html += `
+                    <tr>
+                        <td>${itemId}</td>
+                        <td>${barcode}</td>
+                        <td>${callNumber}</td>
+                        <td>${locStr}</td>
+                        <td>${typeStr}</td>
+                        <td>${updated}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
 
