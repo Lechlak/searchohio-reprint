@@ -231,7 +231,7 @@
 
             // 2. Query Items
             statusDiv.textContent = "Querying items...";
-            const queryResponse = await fetch("/api/items/query?offset=0&limit=50", {
+            const queryResponse = await fetch("/api/items/query?offset=0&limit=1000000", {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
