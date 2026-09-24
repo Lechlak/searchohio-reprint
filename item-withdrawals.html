@@ -246,12 +246,19 @@
                 }
             }
 
+            // Filter all entries strictly by requested date range [startDate, endDate]
+            allEntries = allEntries.filter(item => {
+                const itemDate = formatDate(item);
+                if (itemDate === 'Unknown Date') return true; // Keep fallback if no date found
+                return itemDate >= startDate && itemDate <= endDate;
+            });
+
             if (allEntries.length === 0) {
                 statusDiv.textContent = `No withdrawn items found for date range [${startDate} to ${endDate}].`;
                 return;
             }
 
-            statusDiv.textContent = `Success! Processed ${allEntries.length} withdrawn item records.`;
+            statusDiv.textContent = `Success! Processed ${allEntries.length} withdrawn item records within [${startDate} to ${endDate}].`;
 
             // 3. Aggregate Data
             const countByItemType = {};
