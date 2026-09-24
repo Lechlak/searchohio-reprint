@@ -163,9 +163,15 @@
         return 'Unknown';
     }
 
-    function formatDate(dateStr) {
-        if (!dateStr) return 'Unknown Date';
-        return dateStr.split('T')[0];
+    function formatDate(itemOrDateStr) {
+        if (!itemOrDateStr) return 'Unknown Date';
+        if (typeof itemOrDateStr === 'string') {
+            return itemOrDateStr.split('T')[0];
+        }
+        const item = itemOrDateStr;
+        const dateVal = item.deletedDate || item.updatedDate || item.createdDate || (item.fixedFields && (item.fixedFields['83']?.value || item.fixedFields['83'] || item.fixedFields['84']?.value || item.fixedFields['84']));
+        if (!dateVal) return 'Unknown Date';
+        return String(dateVal).split('T')[0];
     }
 
     async function fetchWithdrawals(startDate, endDate) {
@@ -206,7 +212,7 @@
             while (total === null || offset < total) {
                 statusDiv.textContent = `Fetching deleted items (retrieved ${allEntries.length}${total !== null ? ' of ' + total : ''})...`;
                 
-                const url = `/api/items?updatedDate=${encodeURIComponent(dateRangeParam)}&deleted=true&fields=id,location,fixedFields,updatedDate,barcode,callNumber,itemType,deleted&limit=${limit}&offset=${offset}`;
+                const url = `/api/items?updatedDate=${encodeURIComponent(dateRangeParam)}&deleted=true&fields=id,location,fixedFields,updatedDate,deletedDate,createdDate,barcode,callNumber,itemType,deleted&limit=${limit}&offset=${offset}`;
                 
                 const itemsResponse = await fetch(url, {
                     method: "GET",
@@ -255,7 +261,7 @@
             const countByDateAndType = {};
 
             allEntries.forEach(item => {
-                const dateKey = formatDate(item.updatedDate);
+                const dateKey = formatDate(item);
                 const itemType = getItemTypeLabel(item);
                 const location = getLocationLabel(item);
 
@@ -460,7 +466,7 @@
                 const callNumber = item.callNumber || 'N/A';
                 const locStr = getLocationLabel(item);
                 const typeStr = getItemTypeLabel(item);
-                const updated = item.updatedDate ? item.updatedDate : 'N/A';
+                const dateStr = formatDate(item);
 
                 html += `
                     <tr>
@@ -469,7 +475,7 @@
                         <td>${callNumber}</td>
                         <td>${locStr}</td>
                         <td>${typeStr}</td>
-                        <td>${updated}</td>
+                        <td>${dateStr}</td>
                     </tr>
                 `;
             });
